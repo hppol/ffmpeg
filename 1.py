@@ -2,6 +2,8 @@ import pyperclip
 import subprocess
 while True:
     a = input("link: ")
-    b = input("number: ")
+    b = input("name: ")
     pyperclip.copy("ffmpeg -i \"%s\" -c copy %s.ts " %(a,b))
     subprocess.call('start', shell=True)
+    print("hi")
+    
