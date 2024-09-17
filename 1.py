@@ -5,8 +5,25 @@ from tkinter import messagebox, ttk
 import os
 import re
 
+# FFprobe로 총 시간 추출
+def get_video_duration(link):
+    command = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{link}"'
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        duration = float(result.stdout.strip())
+        return duration
+    except ValueError:
+        return None
+
 # FFmpeg 작업을 스레드에서 실행 (진행 상태 표시)
 def download_video(link, name, progress_bar, progress_label):
+    # 총 시간 가져오기
+    total_duration = get_video_duration(link)
+    if total_duration is None:
+        messagebox.showerror("오류", "동영상의 총 시간을 가져오지 못했습니다.")
+        button.config(state=NORMAL)
+        return
+    
     command = f'ffmpeg -i "{link}" -c copy {name}.ts'
 
     # CMD 창을 숨기기 위한 플래그 설정 (Windows용)
@@ -21,15 +38,13 @@ def download_video(link, name, progress_bar, progress_label):
 
         # stderr에서 진행률을 파싱하는 반복문
         for line in process.stderr:
-            # 진행률 정보 파싱 (ex: "frame=1000 fps=24 q=-1.0 size=500kB time=00:00:10.00 bitrate=4000kbits/s speed=1x")
+            # 진행률 정보 파싱 (ex: "time=00:00:10.00")
             match = re.search(r'time=(\d+):(\d+):(\d+).(\d+)', line)
             if match:
                 hours, minutes, seconds, milliseconds = map(int, match.groups())
-                total_seconds = hours * 3600 + minutes * 60 + seconds + milliseconds / 100
-                # 총 시간 대비 현재 시간으로 진행률 계산 (예시로 100초를 최대 시간으로 가정)
-                total_duration = 100  # 다운로드 할 파일의 총 시간을 알 수 있다면 이를 사용
-                progress = (total_seconds / total_duration) * 100
-
+                current_time = hours * 3600 + minutes * 60 + seconds + milliseconds / 100
+                # 진행률 계산
+                progress = (current_time / total_duration) * 100
                 # 진행률 업데이트 (UI 스레드에서 업데이트)
                 update_progress(progress, progress_bar, progress_label)
 
